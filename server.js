@@ -21,7 +21,10 @@ passport.use(
     {
       clientID: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      callbackURL: "http://localhost:3000/auth/github/callback",
+      callbackURL:
+  process.env.NODE_ENV === "production"
+    ? "https://ai-capsule-wihw.onrender.com/auth/github/callback"
+    : "http://localhost:3000/auth/github/callback",
     },
     (accessToken, refreshToken, profile, done) => {
       return done(null, profile);
@@ -51,11 +54,15 @@ app.get(
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
     });
 
-    res.redirect("http://localhost:5173");
+    res.redirect(
+  process.env.NODE_ENV === "production"
+    ? "https://ai-capsule-wihw.onrender.com"
+    : "http://localhost:5173"
+);
   }
 );
 
