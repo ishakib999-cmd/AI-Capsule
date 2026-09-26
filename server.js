@@ -154,7 +154,7 @@ req.user.user_id
 
 
 // CREATE a capsule record
-app.post("/api/capsules", authenticateToken, (req, res) => {
+app.post("/api/capsules", (req, res) => {
   const {
     project_name,
     prompt_title,
@@ -222,8 +222,8 @@ app.delete("/api/capsules/:id", authenticateToken, (req, res) => {
   const { id } = req.params;
 
   db.run(
-    "DELETE FROM capsules WHERE id = ? AND user_id = ?",
-[id, req.user.user_id],
+    "DELETE FROM capsules WHERE id = ?",
+    [id],
     function (err) {
       if (err) {
         return res.status(500).json({ error: err.message });
@@ -233,6 +233,18 @@ app.delete("/api/capsules/:id", authenticateToken, (req, res) => {
     }
   );
 });
+
+// Serve React frontend in production
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "client", "dist")));
+
+  app.use((req, res, next) => {
+    if (req.method === "GET" && !req.path.startsWith("/api") && !req.path.startsWith("/auth")) {
+      return res.sendFile(path.join(__dirname, "client", "dist", "index.html"));
+    }
+    next();
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`AI Capsule server running on port ${PORT}`);
