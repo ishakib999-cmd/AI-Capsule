@@ -161,7 +161,7 @@ req.user.user_id
 
 
 // CREATE a capsule record
-app.post("/api/capsules", (req, res) => {
+app.post("/api/capsules", authenticateToken, (req, res) => {
   const {
     project_name,
     prompt_title,
