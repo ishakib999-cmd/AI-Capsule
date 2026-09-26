@@ -212,11 +212,6 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Temporary home page
-app.get("/", (req, res) => {
-  res.send("AI Capsule is running!");
-});
-
 // DELETE a capsule record
 app.delete("/api/capsules/:id", authenticateToken, (req, res) => {
   const { id } = req.params;
