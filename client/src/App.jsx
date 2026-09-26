@@ -4,228 +4,326 @@ import "./App.css";
 function App() {
   const [capsules, setCapsules] = useState([]);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({
+
+  const emptyForm = {
     project_name: "",
     prompt_title: "",
-    prompt_version: "v1",
+    prompt_version: "",
     prompt_text: "",
     response_summary: "",
-    category: "Coding",
-    usefulness: "Good",
+    category: "",
+    usefulness: "",
     reviewed: false,
     improved: false,
     screenshot_url: "",
     notes: "",
-  });
+  };
 
+  const [form, setForm] = useState(emptyForm);
+
+  // Load capsules
   const loadCapsules = async () => {
-  try {
-    const response = await fetch("/api/capsules");
+    try {
+      const response = await fetch("/api/capsules");
 
-    if (response.status === 401) {
+      if (response.status === 401) {
+        setCapsules([]);
+        return;
+      }
+
+      const data = await response.json();
+      setCapsules(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error loading capsules:", error);
       setCapsules([]);
-      return;
     }
+  };
 
-    const data = await response.json();
-    setCapsules(Array.isArray(data) ? data : []);
-  } catch (error) {
-    console.error("Error loading capsules:", error);
-    setCapsules([]);
-  }
-};
+  useEffect(() => {
+    loadCapsules();
+  }, []);
 
-const handleEdit = (capsule) => {
-  setEditingId(capsule.id);
+  // Handle form input
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
 
-  setForm({
-    project_name: capsule.project_name || "",
-    prompt_title: capsule.prompt_title || "",
-    prompt_version: capsule.prompt_version || "",
-    prompt_text: capsule.prompt_text || "",
-    response_summary: capsule.response_summary || "",
-    category: capsule.category || "Coding",
-    usefulness: capsule.usefulness || "Good",
-    reviewed: Boolean(capsule.reviewed),
-    improved: Boolean(capsule.improved),
-    screenshot_url: capsule.screenshot_url || "",
-    notes: capsule.notes || "",
-  });
-};
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
 
-const handleUpdate = async () => {
-  await fetch(`/api/capsules/${editingId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(form),
-  });
-
-  setEditingId(null);
-
-  setForm({
-    project_name: "",
-    prompt_title: "",
-    prompt_version: "v1",
-    prompt_text: "",
-    response_summary: "",
-    category: "Coding",
-    usefulness: "Good",
-    reviewed: false,
-    improved: false,
-    screenshot_url: "",
-    notes: "",
-  });
-
-  loadCapsules();
-};
-
-  const handleDelete = async (id) => {
-  await fetch(`/api/capsules/${id}`, {
-    method: "DELETE",
-  });
-
-  loadCapsules();
-};
+  // Create capsule
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    await fetch("/api/capsules", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...form,
-        user_id: "test-user",
-      }),
-    });
+    try {
+      const response = await fetch("/api/capsules", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      if (response.status === 401) {
+        alert("Please log in with GitHub first.");
+        return;
+      }
+
+      if (!response.ok) {
+        alert("Failed to create capsule.");
+        return;
+      }
+
+      setForm(emptyForm);
+      await loadCapsules();
+    } catch (error) {
+      console.error("Error creating capsule:", error);
+    }
+  };
+
+  // Start editing
+  const handleEdit = (capsule) => {
+    setEditingId(capsule.id);
 
     setForm({
-      project_name: "",
-      prompt_title: "",
-      prompt_version: "v1",
-      prompt_text: "",
-      response_summary: "",
-      category: "Coding",
-      usefulness: "Good",
-      reviewed: false,
-      improved: false,
-      screenshot_url: "",
-      notes: "",
+      project_name: capsule.project_name || "",
+      prompt_title: capsule.prompt_title || "",
+      prompt_version: capsule.prompt_version || "",
+      prompt_text: capsule.prompt_text || "",
+      response_summary: capsule.response_summary || "",
+      category: capsule.category || "",
+      usefulness: capsule.usefulness || "",
+      reviewed: Boolean(capsule.reviewed),
+      improved: Boolean(capsule.improved),
+      screenshot_url: capsule.screenshot_url || "",
+      notes: capsule.notes || "",
     });
 
-    loadCapsules();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Update capsule
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch(`/api/capsules/${editingId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      if (response.status === 401) {
+        alert("Please log in with GitHub first.");
+        return;
+      }
+
+      if (!response.ok) {
+        alert("Failed to update capsule.");
+        return;
+      }
+
+      setEditingId(null);
+      setForm(emptyForm);
+      await loadCapsules();
+    } catch (error) {
+      console.error("Error updating capsule:", error);
+    }
+  };
+
+  // Delete capsule
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this capsule?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/capsules/${id}`, {
+        method: "DELETE",
+      });
+
+      if (response.status === 401) {
+        alert("Please log in with GitHub first.");
+        return;
+      }
+
+      if (!response.ok) {
+        alert("Failed to delete capsule.");
+        return;
+      }
+
+      await loadCapsules();
+    } catch (error) {
+      console.error("Error deleting capsule:", error);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm(emptyForm);
   };
 
   return (
     <div className="app">
       <h1>AI Capsule</h1>
-      <p>Save, review and improve your AI prompts.</p>
+      <p>Cloud-Deployed AI Prompt Manager</p>
 
-      <h2>Add Prompt</h2>
+      <div>
+        <a href="/login">
+          <button type="button">Login with GitHub</button>
+        </a>
+      </div>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          name="project_name"
-          placeholder="Project name"
-          value={form.project_name}
-          onChange={handleChange}
-          required
-        />
+      <hr />
 
-        <input
-          name="prompt_title"
-          placeholder="Prompt title"
-          value={form.prompt_title}
-          onChange={handleChange}
-          required
-        />
+      <h2>{editingId ? "Edit Prompt" : "Add Prompt"}</h2>
 
-        <input
-          name="prompt_version"
-          placeholder="Version"
-          value={form.prompt_version}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="prompt_text"
-          placeholder="Prompt text"
-          value={form.prompt_text}
-          onChange={handleChange}
-          required
-        />
-
-        <textarea
-          name="response_summary"
-          placeholder="Response summary"
-          value={form.response_summary}
-          onChange={handleChange}
-        />
-
-        <select name="category" value={form.category} onChange={handleChange}>
-          <option>Coding</option>
-          <option>Writing</option>
-          <option>Research</option>
-        </select>
-
-        <select
-          name="usefulness"
-          value={form.usefulness}
-          onChange={handleChange}
-        >
-          <option>Good</option>
-          <option>Needs Improvement</option>
-        </select>
-
-        <label>
+      <form onSubmit={editingId ? handleUpdate : handleSubmit}>
+        <div>
+          <label>Project Name</label>
+          <br />
           <input
-            type="checkbox"
-            name="reviewed"
-            checked={form.reviewed}
+            type="text"
+            name="project_name"
+            value={form.project_name}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div>
+          <label>Prompt Title</label>
+          <br />
+          <input
+            type="text"
+            name="prompt_title"
+            value={form.prompt_title}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div>
+          <label>Prompt Version</label>
+          <br />
+          <input
+            type="text"
+            name="prompt_version"
+            value={form.prompt_version}
             onChange={handleChange}
           />
-          Reviewed
-        </label>
+        </div>
 
-        <label>
-          <input
-            type="checkbox"
-            name="improved"
-            checked={form.improved}
+        <div>
+          <label>Prompt Text</label>
+          <br />
+          <textarea
+            name="prompt_text"
+            value={form.prompt_text}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div>
+          <label>Response Summary</label>
+          <br />
+          <textarea
+            name="response_summary"
+            value={form.response_summary}
             onChange={handleChange}
           />
-          Improved
-        </label>
+        </div>
 
-        <input
-          name="screenshot_url"
-          placeholder="Screenshot URL (optional)"
-          value={form.screenshot_url}
-          onChange={handleChange}
-        />
+        <div>
+          <label>Category</label>
+          <br />
+          <input
+            type="text"
+            name="category"
+            value={form.category}
+            onChange={handleChange}
+          />
+        </div>
 
-        <textarea
-          name="notes"
-          placeholder="Notes"
-          value={form.notes}
-          onChange={handleChange}
-        />
+        <div>
+          <label>Usefulness</label>
+          <br />
+          <input
+            type="text"
+            name="usefulness"
+            value={form.usefulness}
+            onChange={handleChange}
+          />
+        </div>
 
-        {editingId ? (
-  <button type="button" onClick={handleUpdate}>
-    Update Prompt
-  </button>
-) : (
-  <button type="submit">
-    Save Prompt
-  </button>
-)}
+        <div>
+          <label>
+            <input
+              type="checkbox"
+              name="reviewed"
+              checked={form.reviewed}
+              onChange={handleChange}
+            />
+            Reviewed
+          </label>
+        </div>
+
+        <div>
+          <label>
+            <input
+              type="checkbox"
+              name="improved"
+              checked={form.improved}
+              onChange={handleChange}
+            />
+            Improved
+          </label>
+        </div>
+
+        <div>
+          <label>Screenshot URL</label>
+          <br />
+          <input
+            type="text"
+            name="screenshot_url"
+            value={form.screenshot_url}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div>
+          <label>Notes</label>
+          <br />
+          <textarea
+            name="notes"
+            value={form.notes}
+            onChange={handleChange}
+          />
+        </div>
+
+        <br />
+
+        <button type="submit">
+          {editingId ? "Update Prompt" : "Save Prompt"}
+        </button>
+
+        {editingId && (
+          <button type="button" onClick={cancelEdit}>
+            Cancel
+          </button>
+        )}
       </form>
 
-      <h2>My Prompt Capsules</h2>
+      <hr />
+
+      <h2>Saved Prompts</h2>
 
       {capsules.length === 0 ? (
         <p>No prompts saved yet.</p>
@@ -233,15 +331,66 @@ const handleUpdate = async () => {
         capsules.map((capsule) => (
           <div key={capsule.id}>
             <h3>{capsule.prompt_title}</h3>
-            <p><strong>Project:</strong> {capsule.project_name}</p>
-            <p><strong>Version:</strong> {capsule.prompt_version}</p>
-            <p>{capsule.prompt_text}</p>
-            <button onClick={() => handleEdit(capsule)}>
-  Edit
-</button>
-            <button onClick={() => handleDelete(capsule.id)}>
-  Delete
-</button>
+
+            <p>
+              <strong>Project:</strong> {capsule.project_name}
+            </p>
+
+            <p>
+              <strong>Version:</strong> {capsule.prompt_version}
+            </p>
+
+            <p>
+              <strong>Prompt:</strong> {capsule.prompt_text}
+            </p>
+
+            <p>
+              <strong>Response Summary:</strong>{" "}
+              {capsule.response_summary}
+            </p>
+
+            <p>
+              <strong>Category:</strong> {capsule.category}
+            </p>
+
+            <p>
+              <strong>Usefulness:</strong> {capsule.usefulness}
+            </p>
+
+            <p>
+              <strong>Reviewed:</strong>{" "}
+              {capsule.reviewed ? "Yes" : "No"}
+            </p>
+
+            <p>
+              <strong>Improved:</strong>{" "}
+              {capsule.improved ? "Yes" : "No"}
+            </p>
+
+            <p>
+              <strong>Screenshot:</strong>{" "}
+              {capsule.screenshot_url || "None"}
+            </p>
+
+            <p>
+              <strong>Notes:</strong> {capsule.notes}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => handleEdit(capsule)}
+            >
+              Edit
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDelete(capsule.id)}
+            >
+              Delete
+            </button>
+
+            <hr />
           </div>
         ))
       )}
