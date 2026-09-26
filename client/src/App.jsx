@@ -18,25 +18,22 @@ function App() {
     notes: "",
   });
 
-  const loadCapsules = () => {
-    fetch("/api/capsules")
-      .then((res) => res.json())
-      .then((data) => setCapsules(data))
-      .catch((err) => console.error(err));
-  };
+  const loadCapsules = async () => {
+  try {
+    const response = await fetch("/api/capsules");
 
-  useEffect(() => {
-    loadCapsules();
-  }, []);
+    if (response.status === 401) {
+      setCapsules([]);
+      return;
+    }
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    setForm({
-      ...form,
-      [name]: type === "checkbox" ? checked : value,
-    });
-  };
+    const data = await response.json();
+    setCapsules(Array.isArray(data) ? data : []);
+  } catch (error) {
+    console.error("Error loading capsules:", error);
+    setCapsules([]);
+  }
+};
 
 const handleEdit = (capsule) => {
   setEditingId(capsule.id);
